@@ -19,7 +19,7 @@ SSE_FLAGS = "-mfpmath=sse -msse2"
 SOURCE_FILES = [
     'pyhelper.c', 'serialqueue.c', 'stepcompress.c', 'steppersync.c',
     'itersolve.c', 'trapq.c', 'pollreactor.c', 'msgblock.c', 'trdispatch.c',
-    'kin_cartesian.c', 'kin_shaper.c'
+    'kin_cartesian.c', 'kin_shaper.c', 'extruder.c'
 ]
 DEST_LIB = "c_helper.so"
 OTHER_FILES = [
@@ -126,6 +126,11 @@ defs_kin_shaper = """
     struct stepper_kinematics * input_shaper_alloc(void);
 """
 
+defs_extruder = """
+    struct stepper_kinematics *extruder_stepper_alloc(void);
+    void extruder_stepper_free(struct stepper_kinematics *sk);
+"""
+
 defs_serialqueue = """
     #define MESSAGE_MAX 64
     struct pull_queue_message {
@@ -183,7 +188,7 @@ defs_std = """
 defs_all = [
     defs_pyhelper, defs_serialqueue, defs_std, defs_stepcompress,
     defs_steppersync, defs_itersolve, defs_trapq, defs_trdispatch,
-    defs_kin_cartesian, defs_kin_shaper,
+    defs_kin_cartesian, defs_kin_shaper, defs_extruder,
 ]
 
 # Update filenames to an absolute path
