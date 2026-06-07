@@ -9,6 +9,14 @@ HOMING_START_DELAY = 0.001
 ENDSTOP_SAMPLE_TIME = .000015
 ENDSTOP_SAMPLE_COUNT = 4
 
+# Mapping between an axis letter and its toolhead index
+# (x, y, z, e, a, b, c)
+# e is skipped due to it not being a kinematic axis
+
+KIN_AXIS_INDEXES = (0, 1, 2, 4, 5, 6)
+KIN_AXIS_NAMES = "xyzabc"
+KIN_NAME_BY_INDEX = dict(zip(KIN_AXIS_INDEXES, KIN_AXIS_NAMES))
+
 # Return a completion that completes when all completions in a list complete
 def multi_complete(printer, completions):
     if len(completions) == 1:
@@ -186,8 +194,10 @@ class Homing:
     def set_homed_position(self, pos):
         self.toolhead.set_position(self._fill_coord(pos))
     def _set_start_position(self, forcepos):
-        homing_axes = "".join(["xyzabc"[axis] for axis in range(6)
-                               if forcepos[axis] is not None])
+        homing_axes = "".join([KIN_NAME_BY_INDEX[axis]
+                               for axis in KIN_AXIS_INDEXES
+                               if axis < len(forcepos)
+                               and forcepos[axis] is not None])
         startpos = self._fill_coord(forcepos)
         self.toolhead.set_position(startpos, homing_axes=homing_axes)
     def _retract_move(self, homing_info, forcepos, movepos):
@@ -245,7 +255,7 @@ class Homing:
                     if newpos[axis] is None:
                         raise self.printer.command_error(
                             "Cannot determine position of toolhead on "
-                            "axis %s after homing" % "xyzabc"[axis])
+                            "axis %s" % KIN_NAME_BY_INDEX.get(axis, axis))
                     homepos[axis] = newpos[axis]
             self.toolhead.set_position(homepos)
     def _create_probe_gcmd(self, attempt_num, probe_speed):
@@ -338,8 +348,8 @@ class PrinterHoming:
         # Move to origin
         kin = self.printer.lookup_object('toolhead').get_kinematics()
         axes = []
-        for pos, axis in enumerate('XYZABC'):
-            if gcmd.get(axis, None) is not None:
+        for axis_letter, pos in zip('XYZABC', KIN_AXIS_INDEXES):
+            if gcmd.get(axis_letter, None) is not None:
                 axes.append(pos)
         if not axes:
             # Home all axes provided by the kinematics (defaults to X, Y, Z)

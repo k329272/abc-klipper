@@ -248,7 +248,10 @@ class PrinterMotionReport:
         print_time = mcu.estimated_print_time(eventtime)
         pos, velocity = self.dtrapqs['toolhead'].get_trapq_position(print_time)
         if pos is not None:
-            live_pos[:6] = pos[:6]
+            # trapq position is (x, y, z, a, b, c); map into the toolhead
+            # coordinate layout [X, Y, Z, E, A, B, C, ...]
+            live_pos[0:3] = pos[0:3]
+            live_pos[4:7] = pos[3:6]
             xyzvelocity = velocity
         # Calculate requested position of extra axes
         for ea_index, ea in enumerate(extra_axes):
@@ -260,7 +263,7 @@ class PrinterMotionReport:
                 pos, velocity = ehandler.get_trapq_position(print_time)
                 if pos is not None:
                     live_pos[ea_index] = pos[0]
-                    if ea_index == 6:
+                    if ea_index == 3:
                         evelocity = velocity
         # Report status
         self.last_status = dict(self.last_status)
