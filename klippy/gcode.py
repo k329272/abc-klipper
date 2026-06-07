@@ -18,10 +18,11 @@ class Coord(tuple):
     x = property(operator.itemgetter(0))
     y = property(operator.itemgetter(1))
     z = property(operator.itemgetter(2))
-    a = property(operator.itemgetter(3))
-    b = property(operator.itemgetter(4))
-    c = property(operator.itemgetter(5))
-    e = property(operator.itemgetter(6))
+    a = property(operator.itemgetter(4))
+    b = property(operator.itemgetter(5))
+    c = property(operator.itemgetter(6))
+    
+    e = property(operator.itemgetter(3))
 
 # Class for handling gcode command parameters (gcmd)
 class GCodeCommand:
