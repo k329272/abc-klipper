@@ -255,22 +255,28 @@ itersolve_get_trapq(struct stepper_kinematics *sk)
 
 double __visible
 itersolve_calc_position_from_coord(struct stepper_kinematics *sk
-                                   , double x, double y, double z)
+                                   , double x, double y, double z
+                                   , double a, double b, double c)
 {
     struct move m;
     memset(&m, 0, sizeof(m));
     m.start_pos.x = x;
     m.start_pos.y = y;
     m.start_pos.z = z;
+    m.start_pos.a = a;
+    m.start_pos.b = b;
+    m.start_pos.c = c;
     m.move_t = 1000.;
     return sk->calc_position_cb(sk, &m, 500.);
 }
 
 void __visible
 itersolve_set_position(struct stepper_kinematics *sk
-                       , double x, double y, double z)
+                       , double x, double y, double z
+                       , double a, double b, double c)
 {
-    sk->commanded_pos = itersolve_calc_position_from_coord(sk, x, y, z);
+    sk->commanded_pos = itersolve_calc_position_from_coord(sk, x, y, z,
+                                                           a, b, c);
 }
 
 double __visible

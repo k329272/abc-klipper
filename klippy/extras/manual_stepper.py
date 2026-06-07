@@ -67,7 +67,8 @@ class ManualStepper:
             dist, speed, accel)
         self.trapq_append(self.trapq, movetime,
                           accel_t, cruise_t, accel_t,
-                          cp, 0., 0., axis_r, 0., 0.,
+                          cp, 0., 0., 0., 0., 0.,
+                          axis_r, 0., 0., 0., 0., 0.,
                           0., cruise_v, accel)
         self.commanded_pos = movepos
         return movetime + accel_t + cruise_t + accel_t
