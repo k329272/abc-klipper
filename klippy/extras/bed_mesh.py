@@ -103,6 +103,16 @@ class BedMesh:
         self.base_fade_target = config.getfloat('fade_target', None)
         self.fade_target = 0.
         self.tool_offset = 0.
+        # A/B bed-normal offset.  Derived from the slope of the same mesh
+        # used for Z compensation, biasing the A and B rotary axes toward
+        # the bed surface normal.  Nozzle-tip displacement from the tilt is
+        # handled by the kinematics, so only the angles are applied here.
+        self.ab_enabled = config.getboolean('ab_compensation', False)
+        self.ab_gradient_step = config.getfloat(
+            'ab_gradient_step', 0.5, minval=0.01)
+        self.ab_in_degrees = config.getboolean('ab_output_in_degrees', True)
+        self.ab_a_scale = config.getfloat('ab_a_scale', 1.)
+        self.ab_b_scale = config.getfloat('ab_b_scale', 1.)
         self.gcode = self.printer.lookup_object('gcode')
         self.splitter = MoveSplitter(config, self.gcode)
         # setup persistent storage
@@ -178,6 +188,34 @@ class BedMesh:
             return (self.fade_end - z_pos) / self.fade_dist
         else:
             return 1.
+    def calc_ab_offset(self, x, y):
+        # Derive A/B rotary offsets from the local slope of the same mesh
+        # used for Z compensation, biasing the tool toward the bed normal.
+        if self.z_mesh is None or not self.ab_enabled:
+            return 0., 0.
+        zm = self.z_mesh
+        h = self.ab_gradient_step
+        # Sample the mesh slope, clamping the sample points to the mesh
+        # domain so edges use a one-sided difference with the correct span
+        # (a centered difference would otherwise be halved at the boundary).
+        ox, oy = zm.mesh_offsets
+        x_min, x_max = zm.mesh_x_min - ox, zm.mesh_x_max - ox
+        y_min, y_max = zm.mesh_y_min - oy, zm.mesh_y_max - oy
+        x_lo, x_hi = max(x_min, x - h), min(x_max, x + h)
+        y_lo, y_hi = max(y_min, y - h), min(y_max, y + h)
+        dx, dy = x_hi - x_lo, y_hi - y_lo
+        dz_dx = (zm.calc_z(x_hi, y) - zm.calc_z(x_lo, y)) / dx \
+            if dx > 1e-9 else 0.
+        dz_dy = (zm.calc_z(x, y_hi) - zm.calc_z(x, y_lo)) / dy \
+            if dy > 1e-9 else 0.
+        # A rotates about X -> matches the slope seen along Y
+        # B rotates about Y -> matches the slope seen along X
+        a = math.atan(dz_dy)
+        b = math.atan(dz_dx)
+        if self.ab_in_degrees:
+            a = math.degrees(a)
+            b = math.degrees(b)
+        return a * self.ab_a_scale, b * self.ab_b_scale
     def get_position(self):
         # Return last, non-transformed position
         if self.z_mesh is None:
@@ -203,10 +241,17 @@ class BedMesh:
                           (self.fade_dist - z_adj))
                 factor = constrain(factor, 0., 1.)
             final_z_adj = factor * z_adj + self.fade_target
-            self.last_position[:] = [x, y, z - final_z_adj] + cur_pos[3:]
+            new_pos = [x, y, z - final_z_adj] + cur_pos[3:]
+            a_off, b_off = self.calc_ab_offset(x, y)
+            new_pos[4] -= a_off
+            new_pos[5] -= b_off
+            self.last_position[:] = new_pos
         return list(self.last_position)
     def move(self, newpos, speed):
         factor = self.get_z_factor(newpos[2])
+        # A single A/B offset for the move, based on its target (X, Y).
+        # The axes are not held to the surface mid-move (no splitting).
+        a_off, b_off = self.calc_ab_offset(newpos[0], newpos[1])
         if self.z_mesh is None or not factor:
             # No mesh calibrated, or mesh leveling phased out.
             x, y, z = newpos[:3]
@@ -215,12 +260,17 @@ class BedMesh:
                 logging.info(
                     "bed_mesh fade complete: Current Z: %.4f fade_target: %.4f "
                     % (z, self.fade_target))
-            self.toolhead.move([x, y, z + self.fade_target] + newpos[3:], speed)
+            outpos = [x, y, z + self.fade_target] + newpos[3:]
+            outpos[4] += a_off
+            outpos[5] += b_off
+            self.toolhead.move(outpos, speed)
         else:
             self.splitter.build_move(self.last_position, newpos, factor)
             while not self.splitter.traverse_complete:
                 split_move = self.splitter.split()
                 if split_move:
+                    split_move[4] += a_off
+                    split_move[5] += b_off
                     self.toolhead.move(split_move, speed)
                 else:
                     raise self.gcode.error(
