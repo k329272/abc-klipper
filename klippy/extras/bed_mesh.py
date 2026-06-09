@@ -243,8 +243,8 @@ class BedMesh:
             final_z_adj = factor * z_adj + self.fade_target
             new_pos = [x, y, z - final_z_adj] + cur_pos[3:]
             a_off, b_off = self.calc_ab_offset(x, y)
-            new_pos[4] -= a_off
-            new_pos[5] -= b_off
+            new_pos[4] -= a_off * factor
+            new_pos[5] -= b_off * factor
             self.last_position[:] = new_pos
         return list(self.last_position)
     def move(self, newpos, speed):
@@ -252,6 +252,8 @@ class BedMesh:
         # A single A/B offset for the move, based on its target (X, Y).
         # The axes are not held to the surface mid-move (no splitting).
         a_off, b_off = self.calc_ab_offset(newpos[0], newpos[1])
+        a_off *= factor
+        b_off *= factor
         if self.z_mesh is None or not factor:
             # No mesh calibrated, or mesh leveling phased out.
             x, y, z = newpos[:3]
@@ -261,6 +263,7 @@ class BedMesh:
                     "bed_mesh fade complete: Current Z: %.4f fade_target: %.4f "
                     % (z, self.fade_target))
             outpos = [x, y, z + self.fade_target] + newpos[3:]
+            
             outpos[4] += a_off
             outpos[5] += b_off
             self.toolhead.move(outpos, speed)
