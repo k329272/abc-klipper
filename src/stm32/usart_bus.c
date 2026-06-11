@@ -29,26 +29,29 @@ DECL_CONSTANT_STR("BUS_PINS_usart3", "PB11,PB10");
 struct usart_bus_info {
     USART_TypeDef *usart;
     uint8_t rx_pin, tx_pin;
-    IRQn_Type irqn;
 };
 
 static const struct usart_bus_info usart_bus[] = {
-    { USART1, GPIO('A', 10), GPIO('A', 9), USART1_IRQn },
-    { USART2, GPIO('A', 3), GPIO('A', 2), USART2_IRQn },
+    { USART1, GPIO('A', 10), GPIO('A', 9) },
+    { USART2, GPIO('A', 3), GPIO('A', 2) },
 #ifdef USART3
-    { USART3, GPIO('B', 11), GPIO('B', 10), USART3_IRQn },
+    { USART3, GPIO('B', 11), GPIO('B', 10) },
 #endif
 };
 
 // The usart (if any) reserved for the main Klipper console
 #if CONFIG_STM32_SERIAL_USART1 || CONFIG_STM32_SERIAL_USART1_ALT_PB7_PB6
   #define CONSOLE_USART USART1
+  #define CONSOLE_BUS 0
 #elif CONFIG_STM32_SERIAL_USART2 || CONFIG_STM32_SERIAL_USART2_ALT_PD6_PD5
   #define CONSOLE_USART USART2
+  #define CONSOLE_BUS 1
 #elif CONFIG_STM32_SERIAL_USART3 || CONFIG_STM32_SERIAL_USART3_ALT_PD9_PD8
   #define CONSOLE_USART USART3
+  #define CONSOLE_BUS 2
 #else
   #define CONSOLE_USART 0
+  #define CONSOLE_BUS -1
 #endif
 
 #define TX_BUFFER_SIZE 2048 // Must be power of 2
@@ -67,7 +70,7 @@ static struct usart_bus_state bus_state;
 #define CR1_FLAGS (USART_CR1_UE | USART_CR1_RE | USART_CR1_TE   \
                    | USART_CR1_RXNEIE)
 
-static void
+void
 usart_bus_irq_handler(void)
 {
     struct usart_bus_state *s = &bus_state;
@@ -88,6 +91,32 @@ usart_bus_irq_handler(void)
             usart->CR1 = CR1_FLAGS;
         else
             usart->DR = s->tx_buf[s->tx_pop++ % TX_BUFFER_SIZE];
+    }
+}
+
+// Enable the IRQ for the given bus.  The armcm_enable_irq() macro
+// statically registers the handler in the vector table, so it must be
+// invoked with compile time constants.  The Klipper console's usart
+// (if any) is excluded as its irq is owned by serial.c.
+static void
+usart_bus_enable_irq(uint32_t bus)
+{
+    switch (bus) {
+#if CONSOLE_BUS != 0
+    case 0:
+        armcm_enable_irq(usart_bus_irq_handler, USART1_IRQn, 0);
+        break;
+#endif
+#if CONSOLE_BUS != 1
+    case 1:
+        armcm_enable_irq(usart_bus_irq_handler, USART2_IRQn, 0);
+        break;
+#endif
+#if defined(USART3) && CONSOLE_BUS != 2
+    case 2:
+        armcm_enable_irq(usart_bus_irq_handler, USART3_IRQn, 0);
+        break;
+#endif
     }
 }
 
@@ -115,7 +144,7 @@ usart_bus_setup(uint32_t bus, uint32_t baud, struct task_wake *rx_wake)
     usart->BRR = (((div / 16) << USART_BRR_DIV_Mantissa_Pos)
                   | ((div % 16) << USART_BRR_DIV_Fraction_Pos));
     usart->CR1 = CR1_FLAGS;
-    armcm_enable_irq(usart_bus_irq_handler, info->irqn, 0);
+    usart_bus_enable_irq(bus);
 
     gpio_peripheral(info->rx_pin, GPIO_FUNCTION(7), 1);
     gpio_peripheral(info->tx_pin, GPIO_FUNCTION(7), 0);
