@@ -97,9 +97,11 @@ class T5UIC1:
         cmd_queue = self.mcu.alloc_command_queue()
         self.send_dwin_cmd = self.mcu.lookup_command(
             "dwin_send oid=%c data=%*s", cq=cmd_queue)
-        self.mcu.register_response(self._handle_rx, "dwin_rx", self.oid)
-        self.mcu.register_response(self._handle_tx_drops,
-                                   "dwin_tx_drops", self.oid)
+        
+        self.mcu.register_serial_response(self._handle_rx, "dwin_rx", self.oid)
+        self.mcu.register_serial_response(self._handle_tx_drops,
+                                          "dwin_tx_drops", self.oid)
+
     def _handle_rx(self, params):
         data = bytearray(params['data'])
         if data[:3] == b'\x00OK':
