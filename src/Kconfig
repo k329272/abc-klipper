@@ -136,6 +136,10 @@ config WANT_HD44780
     bool
     depends on HAVE_GPIO
     default y
+config WANT_DWIN_T5UIC1
+    bool
+    depends on HAVE_USART_BUS
+    default y
 config WANT_ADXL345
     bool
     depends on WANT_SPI
@@ -232,6 +236,9 @@ config WANT_ST7920
 config WANT_HD44780
     bool "Support HD44780 LCD display"
     depends on HAVE_GPIO
+config WANT_DWIN_T5UIC1
+    bool "Support DWIN T5UIC1 serial LCD display (Ender 3 V2/Neo)"
+    depends on HAVE_USART_BUS
 comment "Accelerometer chips"
     depends on WANT_SPI || WANT_I2C
 config WANT_ADXL345
@@ -336,6 +343,8 @@ config HAVE_GPIO_SDIO
 config HAVE_GPIO_I2C
     bool
 config HAVE_GPIO_HARD_PWM
+    bool
+config HAVE_USART_BUS
     bool
 config HAVE_STRICT_TIMING
     bool

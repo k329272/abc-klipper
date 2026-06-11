@@ -88,6 +88,7 @@ src-$(CONFIG_CANSERIAL) += $(canbus-src-y) generic/canbus.c stm32/chipid.c
 src-$(CONFIG_USBCANBUS) += $(usb-src-y) $(canbus-src-y)
 src-$(CONFIG_USBCANBUS) += stm32/chipid.c generic/usb_canbus.c
 src-$(CONFIG_WANT_HARD_PWM) += stm32/hard_pwm.c
+src-$(CONFIG_WANT_DWIN_T5UIC1) += stm32/usart_bus.c
 src-$(CONFIG_HAVE_GPIO_SDIO) += stm32/sdio.c
 
 # Binary output file rules

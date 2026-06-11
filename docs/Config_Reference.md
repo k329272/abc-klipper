@@ -4943,6 +4943,64 @@ thus they do not support the "menu" options or button configuration.
 # See the "display" section for available parameters.
 ```
 
+### [dwin_t5uic1]
+
+Support for the DWIN T5UIC1 serial LCD - the stock display on the
+Creality Ender 3 V2 / Ender 3 V2 Neo. The display is connected to a
+hardware uart of the main micro-controller (USART3 PB10/PB11 on the
+stock Creality 4.2.x boards, available on the original 10 pin IDC
+display header) and renders the original Creality interface using the
+icons stored in the display's own flash. The micro-controller code
+must be compiled with "Support DWIN T5UIC1 serial LCD display"
+enabled (the default on supported STM32 chips). This display does not
+use the [display] config section nor the menu system - it implements
+the stock Creality menus directly.
+
+```
+[dwin_t5uic1]
+uart_bus: usart3
+#   The micro-controller uart that the display is connected to. May be
+#   one of "usart1", "usart2" or "usart3" (the display header on
+#   Creality 4.2.x boards uses usart3). Note that the uart used for
+#   the display can not also be used for the Klipper console. This
+#   parameter is required.
+#baud: 115200
+#   The baud rate of the display. The default is 115200 (the fixed
+#   rate of the stock display).
+#display_mcu: mcu
+#   The micro-controller that the display is wired to. The default is
+#   "mcu".
+encoder_pins:
+#   The pins connected to the rotary encoder of the display. On
+#   Creality 4.2.x boards this is "^PB15, ^PB12". This parameter is
+#   required.
+#reverse_encoder_direction: False
+#   Set this to True if the encoder rotates the wrong way.
+#encoder_steps_per_detent: 4
+#   The number of encoder pin state transitions per detent (2 or 4).
+#   The default is 4.
+click_pin:
+#   The pin connected to the encoder push button. On Creality 4.2.x
+#   boards this is "^!PB14". This parameter is required.
+#update_interval: 2.0
+#   How often (in seconds) to send status updates (temperatures,
+#   print progress, etc.) to the display. Only values that changed
+#   are transmitted. Increase this value to reduce the bandwidth used
+#   by the display. The default is 2 seconds.
+#full_redraw_interval: 30.0
+#   How often (in seconds) to fully repaint the current screen. This
+#   allows the display to recover from serial frames that were lost
+#   or corrupted in transit. Set to 0 to disable periodic repaints (a
+#   repaint is always performed if the micro-controller reports that
+#   it had to drop a frame). The default is 30 seconds.
+#preheat_pla_hotend_temp: 200
+#preheat_pla_bed_temp: 60
+#preheat_abs_hotend_temp: 210
+#preheat_abs_bed_temp: 100
+#   The temperatures used by the "Preheat PLA" and "Preheat ABS"
+#   menus.
+```
+
 ### [menu]
 
 Customizable lcd display menus.
