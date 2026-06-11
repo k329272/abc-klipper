@@ -1178,6 +1178,30 @@ Visual Examples:
 #  specified outside of the mesh.  This value is used to optimize the travel
 #  path when performing a "rapid scan".  The minimum value that may be specified
 #  is 1.  The default is no overshoot.
+#ab_compensation: False
+#   Enables A/B bed-normal offset.  When True, an offset is added to the A
+#   and B rotary axes so the tool is biased toward the bed surface normal.
+#   The offset angles are derived from the local slope of the same mesh used
+#   for Z compensation, so after the bed is probed the A/B axes lean to match
+#   the bed even when it is warped or not level.  A single offset based on a
+#   move's target (X, Y) is added on top of whatever the g-code commands; the
+#   axes are not held to the surface along the move path.  Nozzle-tip
+#   displacement from the tilt is left to the kinematics.  The A axis is
+#   taken to rotate about X (matching the slope along Y) and B about Y
+#   (matching the slope along X).  The default is False.
+#ab_gradient_step: 0.5
+#   The finite-difference step (in mm) used to sample the bed slope from the
+#   mesh.  Larger values average the slope over a wider area.  Only used when
+#   ab_compensation is enabled.  The default is 0.5.
+#ab_output_in_degrees: True
+#   If True the A/B offsets are emitted in degrees, otherwise in radians.
+#   Set this to match the units of your A/B axes.  The default is True.
+#ab_a_scale: 1.0
+#   Multiplier applied to the computed A offset.  Set to -1 to invert the
+#   direction.  The default is 1.0.
+#ab_b_scale: 1.0
+#   Multiplier applied to the computed B offset.  Set to -1 to invert the
+#   direction.  The default is 1.0.
 ```
 
 ### [bed_tilt]
