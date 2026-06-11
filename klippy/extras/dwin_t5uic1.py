@@ -2456,8 +2456,17 @@ class DWIN_LCD:
         handler = redraw.get(self.checkkey)
         if handler is not None:
             handler()
+            if (self.checkkey == self.PrintProcess
+                    and self.pd.HMI_flag.done_confirm_flag):
+                self._draw_print_done_confirm()
         self.Draw_Status_Area()
         self.lcd.UpdateLCD()
+
+    def _draw_print_done_confirm(self):
+        self.Draw_Print_ProgressBar(100)
+        self.lcd.Draw_Rectangle(1, self.lcd.Color_Bg_Black, 0, 250,
+                                self.lcd.DWIN_WIDTH - 1, self.STATUS_Y)
+        self.lcd.ICON_Show(self.ICON, self.ICON_Confirm_E, 86, 283)
 
     def _update_event(self, eventtime):
         try:
@@ -2484,12 +2493,7 @@ class DWIN_LCD:
                     self.pd.HMI_flag.done_confirm_flag = True
                     self.checkkey = self.PrintProcess
                     self.Goto_PrintProcess()
-                    self.Draw_Print_ProgressBar(100)
-                    self.lcd.Draw_Rectangle(
-                        1, self.lcd.Color_Bg_Black, 0, 250,
-                        self.lcd.DWIN_WIDTH - 1, self.STATUS_Y)
-                    self.lcd.ICON_Show(self.ICON, self.ICON_Confirm_E, 86,
-                                       283)
+                    self._draw_print_done_confirm()
             elif self.pd.status in ('standby', 'cancelled', 'error'):
                 if self.checkkey in (self.PrintProcess, self.Tune,
                                      self.Print_window):
