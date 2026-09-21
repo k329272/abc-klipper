@@ -19,7 +19,7 @@ SSE_FLAGS = "-mfpmath=sse -msse2"
 SOURCE_FILES = [
     'pyhelper.c', 'serialqueue.c', 'stepcompress.c', 'steppersync.c',
     'itersolve.c', 'trapq.c', 'pollreactor.c', 'msgblock.c', 'trdispatch.c',
-    'kin_cartesian.c', 'kin_shaper.c', 'extruder.c'
+    'kin_cartesian.c', 'kin_shaper.c', 'kin_parol.c', 'extruder.c'
 ]
 DEST_LIB = "c_helper.so"
 OTHER_FILES = [
@@ -117,6 +117,15 @@ defs_kin_cartesian = """
     struct stepper_kinematics *cartesian_stepper_alloc(char axis);
 """
 
+defs_kin_parol = """
+    struct parol_ik *parol_ik_alloc(void);
+    void parol_ik_set_params(struct parol_ik *ik, double a1, double a2,
+        double a3, double a4, double a5, double a6, double a7,
+        double tool_x, double tool_y, double tool_z, double orientation_scale);
+    int parol_ik_solve(struct parol_ik *ik, double target[12], double seed[6],
+        int max_iterations, double tolerance, double result[6]);
+"""
+
 defs_kin_shaper = """
     int input_shaper_set_shaper_params(struct stepper_kinematics *sk, char axis
         , int n, double a[], double t[]);
@@ -190,7 +199,7 @@ defs_std = """
 defs_all = [
     defs_pyhelper, defs_serialqueue, defs_std, defs_stepcompress,
     defs_steppersync, defs_itersolve, defs_trapq, defs_trdispatch,
-    defs_kin_cartesian, defs_kin_shaper, defs_extruder,
+    defs_kin_cartesian, defs_kin_parol, defs_kin_shaper, defs_extruder,
 ]
 
 # Update filenames to an absolute path
