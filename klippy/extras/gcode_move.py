@@ -289,7 +289,8 @@ class GCodeMove:
         base_pos = " ".join(["%s:%.6f"  % (a, v)
                              for a, v in zip("XYZEABC", self.base_position)])
         homing_pos = " ".join(["%s:%.6f"  % (a, v)
-                               for a, v in zip("XYZEABC", self.homing_position)])
+                               for a, v in zip("XYZEABC",
+                                               self.homing_position)])
         gcmd.respond_info("mcu: %s\n"
                           "stepper: %s\n"
                           "kinematic: %s\n"
