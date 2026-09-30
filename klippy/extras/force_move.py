@@ -133,7 +133,8 @@ class ForceMove:
             clear_homed = gcmd.get('CLEAR', '').lower()
         else:
             clear_homed = gcmd.get('CLEAR_HOMED', '').lower()
-        clear_homed_axes = "".join([a for a in axis_letters if a in clear_homed])
+        clear_homed_axes = "".join(
+            [a for a in axis_letters if a in clear_homed])
         logging.info("SET_KINEMATIC_POSITION pos=%.3f,%.3f,%.3f,%.3f,%.3f,%.3f"
                      " set_homed=%s clear_homed=%s",
                      newpos[0], newpos[1], newpos[2],

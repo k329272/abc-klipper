@@ -263,7 +263,7 @@ class BedMesh:
                     "bed_mesh fade complete: Current Z: %.4f fade_target: %.4f "
                     % (z, self.fade_target))
             outpos = [x, y, z + self.fade_target] + newpos[3:]
-            
+
             outpos[4] += a_off
             outpos[5] += b_off
             self.toolhead.move(outpos, speed)

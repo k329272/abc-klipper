@@ -25,7 +25,12 @@ def _matmul(a, b):
 
 
 def _dh(theta, alpha, r, d):
-    ct, st, ca, sa = math.cos(theta), math.sin(theta), math.cos(alpha), math.sin(alpha)
+    ct, st, ca, sa = (
+        math.cos(theta),
+        math.sin(theta),
+        math.cos(alpha),
+        math.sin(alpha),
+    )
     return [[ct, -st * ca, st * sa, r * ct],
             [st, ct * ca, -ct * sa, r * st],
             [0., sa, ca, d], [0., 0., 0., 1.]]
@@ -53,7 +58,8 @@ class ParolIK:
         self.printer = config.get_printer()
         kin = self.printer.lookup_object('toolhead').get_kinematics()
         if kin.__class__.__module__ != 'kinematics.parol':
-            raise config.error("[parol_ik] requires [printer] kinematics: parol")
+            raise config.error(
+                "[parol_ik] requires [printer] kinematics: parol")
         self.kin = kin
         self.a1 = config.getfloat('a1', 110.50)
         self.a2 = config.getfloat('a2', 23.42)
@@ -66,7 +72,8 @@ class ParolIK:
         self.tool_offset = [config.getfloat('tool_offset_x', 0.),
                             config.getfloat('tool_offset_y', 0.),
                             config.getfloat('tool_offset_z', 0.)]
-        self.orientation_scale = config.getfloat('orientation_scale', 100., above=0.)
+        self.orientation_scale = config.getfloat(
+            'orientation_scale', 100., above=0.)
         self.max_iterations = config.getint('max_iterations', 80, minval=1)
         self.tolerance = config.getfloat('tolerance', .02, above=0.)
         ffi_main, ffi_lib = chelper.get_ffi()
@@ -78,9 +85,11 @@ class ParolIK:
             self.a6, self.a7, *self.tool_offset, self.orientation_scale)
         self.gcode = self.printer.lookup_object('gcode')
         self.gcode.register_command('PAROL_IK', self.cmd_PAROL_IK,
-                                    desc='Report PAROL joint solution for a TCP pose')
+                                    desc='Report PAROL joint solution'
+                                         ' for a TCP pose')
         self.gcode.register_command('PAROL_MOVE', self.cmd_PAROL_MOVE,
-                                    desc='Move PAROL TCP to a Cartesian endpoint')
+                                    desc='Move PAROL TCP to a Cartesian'
+                                         ' endpoint')
 
     def fk(self, q):
         q = [v * RAD for v in q]
@@ -90,7 +99,10 @@ class ParolIK:
                  (q[3], -math.pi / 2., 0., -self.a5),
                  (q[4], math.pi / 2., 0., 0.),
                  (q[5] + math.pi, math.pi, -self.a7, -self.a6))
-        t = [[1., 0., 0., 0.], [0., 1., 0., 0.], [0., 0., 1., 0.], [0., 0., 0., 1.]]
+        t = [[1., 0., 0., 0.],
+             [0., 1., 0., 0.],
+             [0., 0., 1., 0.],
+             [0., 0., 0., 1.]]
         for row in table:
             t = _matmul(t, _dh(*row))
         offset = [[1., 0., 0., self.tool_offset[0]],
@@ -143,7 +155,8 @@ class ParolIK:
                 self.tolerance, result_c):
             return list(result_c)
         raise self.printer.command_error(
-            'PAROL IK failed to converge; target may be unreachable or singular')
+            'PAROL IK failed to converge;'
+            ' target may be unreachable or singular')
 
     def _python_ik(self, target, seed):
         q = list(seed)
@@ -168,8 +181,10 @@ class ParolIK:
             dq = self._solve(normal, rhs)
             if dq is None:
                 break
-            q = [angle + max(-5., min(5., change)) for angle, change in zip(q, dq)]
-        raise self.printer.command_error('PAROL IK failed to converge; target may be unreachable or singular')
+            q = [angle + max(-5., min(5., change))
+                 for angle, change in zip(q, dq)]
+        raise self.printer.command_error('PAROL IK failed to converge;'
+                                         'target is be unreachable or singular')
 
     def _solution(self, gcmd):
         toolhead = self.printer.lookup_object('toolhead')
@@ -180,13 +195,15 @@ class ParolIK:
             low, high = rail.get_range()
             if not low <= angle <= high:
                 raise self.printer.command_error(
-                    'PAROL IK solution exceeds %s range: %.4f not in %.4f..%.4f'
+                    'PAROL IK solution exceeds %s range:'
+                    '%.4f not in %.4f..%.4f'
                     % (rail.get_name(), angle, low, high))
         return q
 
     def cmd_PAROL_IK(self, gcmd):
         q = self._solution(gcmd)
-        gcmd.respond_info('PAROL IK: J1=%.5f J2=%.5f J3=%.5f J4=%.5f J5=%.5f J6=%.5f'
+        gcmd.respond_info('PAROL IK: J1=%.5f J2=%.5f J3=%.5f'
+                          'J4=%.5f J5=%.5fJ6=%.5f'
                           % tuple(q))
 
     def cmd_PAROL_MOVE(self, gcmd):

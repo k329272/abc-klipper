@@ -21,7 +21,7 @@ class Coord(tuple):
     a = property(operator.itemgetter(4))
     b = property(operator.itemgetter(5))
     c = property(operator.itemgetter(6))
-    
+
     e = property(operator.itemgetter(3))
 
 # Class for handling gcode command parameters (gcmd)
