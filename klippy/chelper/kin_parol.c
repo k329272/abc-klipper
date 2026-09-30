@@ -158,15 +158,14 @@ static int gauss(double a[6][6], double * b, double * x) {
 struct parol_ik * __visible parol_ik_alloc(void) {
   return calloc(1, sizeof(struct parol_ik));
 }
-void __visible parol_ik_set_params(struct parol_ik * i, double a1, double a2, double a3, double a4, double a5, double a6, double a7, double x, double y, double z, double s) {
+void __visible parol_ik_set_params(
+  struct parol_ik * i,
+  double a1, double a2, double a3, double a4,
+  double a5, double a6, double a7, double x,
+  double y, double z, double s) {
   double a[7] = {
-    a1,
-    a2,
-    a3,
-    a4,
-    a5,
-    a6,
-    a7
+    a1, a2, a3, a4,
+    a5, a6, a7
   };
   memcpy(i -> a, a, sizeof(a));
   i -> tool[0] = x;
@@ -174,7 +173,9 @@ void __visible parol_ik_set_params(struct parol_ik * i, double a1, double a2, do
   i -> tool[2] = z;
   i -> scale = s;
 }
-int __visible parol_ik_solve(struct parol_ik * i, double * t, double * seed, int n, double tol, double * out) {
+int __visible parol_ik_solve(
+  struct parol_ik * i, double * t, double * seed,
+  int n, double tol, double * out) {
   double q[6];
   memcpy(q, seed, 48);
   for (int it = 0; it < n; it++) {
