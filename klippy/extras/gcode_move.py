@@ -247,13 +247,8 @@ class GCodeMove:
             raise gcmd.error("Unknown g-code state: %s" % (state_name,))
         # Restore state
         self.absolute_coord = state['absolute_coord']
-<<<<<<< HEAD
-        self.absolute_extrude = state['absolute_extrude']
-        self.base_position[:7] = state['base_position'][:7]
-=======
         self.allow_absolute_extrude = state['allow_absolute_extrude']
-        self.base_position[:4] = state['base_position'][:4]
->>>>>>> upstream/master
+        self.base_position[:4] = state['base_position'][:7]
         self.homing_position = list(state['homing_position'])
         self.speed = state['speed']
         self.speed_factor = state['speed_factor']
