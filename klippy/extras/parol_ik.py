@@ -80,9 +80,12 @@ class ParolIK:
         self.ffi_main = ffi_main
         self.ffi_lib = ffi_lib
         self.c_ik = ffi_main.gc(ffi_lib.parol_ik_alloc(), ffi_lib.free)
-        ffi_lib.parol_ik_set_params(
-            self.c_ik, self.a1, self.a2, self.a3, self.a4, self.a5,
-            self.a6, self.a7, *self.tool_offset, self.orientation_scale)
+        
+        params = (
+            self.c_ik, self.a1, self.a2, self.a3, self.a4, self.a5, self.a6, self.a7
+        ) + tuple(self.tool_offset) + (self.orientation_scale,)
+        
+        ffi_lib.parol_ik_set_params(*params)
         self.gcode = self.printer.lookup_object('gcode')
         self.gcode.register_command('PAROL_IK', self.cmd_PAROL_IK,
                                     desc='Report PAROL joint solution'
