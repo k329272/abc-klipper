@@ -2,28 +2,19 @@
 #
 # Copyright (C) 2026
 # This file may be distributed under the terms of the GNU GPLv3 license.
-
 """PAROL6 Cartesian endpoint IK.
-
 Use PAROL_MOVE rather than G1 for Cartesian targets.  The underlying PAROL
 kinematics remains joint-space so G28 can safely home one joint at a time.
 PAROL_MOVE solves a target pose and queues the resulting synchronized joint
 move.  It is deliberately an endpoint planner; applications needing a straight
 TCP path must interpolate poses into several PAROL_MOVE commands.
 """
-
 import math
 import chelper
-
-
 RAD = math.pi / 180.
-
-
 def _matmul(a, b):
     return [[sum(a[i][k] * b[k][j] for k in range(4)) for j in range(4)]
             for i in range(4)]
-
-
 def _dh(theta, alpha, r, d):
     ct, st, ca, sa = (
         math.cos(theta),
@@ -34,8 +25,6 @@ def _dh(theta, alpha, r, d):
     return [[ct, -st * ca, st * sa, r * ct],
             [st, ct * ca, -ct * sa, r * st],
             [0., sa, ca, d], [0., 0., 0., 1.]]
-
-
 def _rpy(roll, pitch, yaw):
     # Fixed-frame Z-Y-X yaw/pitch/roll, all arguments in radians.
     cr, sr, cp, sp, cy, sy = (math.cos(roll), math.sin(roll), math.cos(pitch),
@@ -43,16 +32,12 @@ def _rpy(roll, pitch, yaw):
     return [[cy * cp, cy * sp * sr - sy * cr, cy * sp * cr + sy * sr, 0.],
             [sy * cp, sy * sp * sr + cy * cr, sy * sp * cr - cy * sr, 0.],
             [-sp, cp * sr, cp * cr, 0.], [0., 0., 0., 1.]]
-
-
 def _rotvec(target, current):
     # Small-angle orientation error for target * current.transpose().
     r = [[sum(target[i][k] * current[j][k] for k in range(3))
           for j in range(3)] for i in range(3)]
     return [.5 * (r[2][1] - r[1][2]), .5 * (r[0][2] - r[2][0]),
             .5 * (r[1][0] - r[0][1])]
-
-
 class ParolIK:
     def __init__(self, config):
         self.printer = config.get_printer()
@@ -80,11 +65,11 @@ class ParolIK:
         self.ffi_main = ffi_main
         self.ffi_lib = ffi_lib
         self.c_ik = ffi_main.gc(ffi_lib.parol_ik_alloc(), ffi_lib.free)
-        
         params = (
-            self.c_ik, self.a1, self.a2, self.a3, self.a4, self.a5, self.a6, self.a7
+            self.c_ik, self.a1, self.a2,
+            self.a3, self.a4, self.a5,
+            self.a6, self.a7
         ) + tuple(self.tool_offset) + (self.orientation_scale,)
-        
         ffi_lib.parol_ik_set_params(*params)
         self.gcode = self.printer.lookup_object('gcode')
         self.gcode.register_command('PAROL_IK', self.cmd_PAROL_IK,
@@ -93,7 +78,6 @@ class ParolIK:
         self.gcode.register_command('PAROL_MOVE', self.cmd_PAROL_MOVE,
                                     desc='Move PAROL TCP to a Cartesian'
                                          ' endpoint')
-
     def fk(self, q):
         q = [v * RAD for v in q]
         table = ((q[0], -math.pi / 2., self.a2, self.a1),
@@ -112,7 +96,6 @@ class ParolIK:
                   [0., 1., 0., self.tool_offset[1]],
                   [0., 0., 1., self.tool_offset[2]], [0., 0., 0., 1.]]
         return _matmul(t, offset)
-
     def _target(self, gcmd):
         # RX/RY/RZ avoid ambiguity with joint-space A/B/C words used by G1.
         target = _rpy(gcmd.get_float('RX') * RAD, gcmd.get_float('RY') * RAD,
@@ -120,13 +103,11 @@ class ParolIK:
         for index, axis in enumerate(('X', 'Y', 'Z')):
             target[index][3] = gcmd.get_float(axis)
         return target
-
     def _error(self, target, q):
         current = self.fk(q)
         pos = [target[i][3] - current[i][3] for i in range(3)]
         rot = _rotvec(target, current)
         return pos + [v * self.orientation_scale for v in rot]
-
     @staticmethod
     def _solve(a, b):
         # Gaussian elimination with partial pivoting; returns None if singular.
@@ -144,7 +125,6 @@ class ParolIK:
                 scale = a[row][col]
                 a[row] = [v - scale * w for v, w in zip(a[row], a[col])]
         return [a[i][6] for i in range(6)]
-
     def ik(self, target, seed):
         # The compiled chelper performs the FK/Jacobian/DLS iterations.  Keep
         # this wrapper intentionally thin so G-code processing stays Python.
@@ -160,7 +140,6 @@ class ParolIK:
         raise self.printer.command_error(
             'PAROL IK failed to converge;'
             ' target may be unreachable or singular')
-
     def _python_ik(self, target, seed):
         q = list(seed)
         delta = .02  # degrees; numerical Jacobian step
@@ -188,7 +167,6 @@ class ParolIK:
                  for angle, change in zip(q, dq)]
         raise self.printer.command_error('PAROL IK failed to converge;'
                                          'target is be unreachable or singular')
-
     def _solution(self, gcmd):
         toolhead = self.printer.lookup_object('toolhead')
         current = toolhead.get_position()
@@ -202,13 +180,11 @@ class ParolIK:
                     '%.4f not in %.4f..%.4f'
                     % (rail.get_name(), angle, low, high))
         return q
-
     def cmd_PAROL_IK(self, gcmd):
         q = self._solution(gcmd)
         gcmd.respond_info('PAROL IK: J1=%.5f J2=%.5f J3=%.5f'
                           'J4=%.5f J5=%.5fJ6=%.5f'
                           % tuple(q))
-
     def cmd_PAROL_MOVE(self, gcmd):
         q = self._solution(gcmd)
         speed = gcmd.get_float('VELOCITY', None, above=0.)
@@ -222,7 +198,5 @@ class ParolIK:
         for index, angle in zip((0, 1, 2, 4, 5, 6), q):
             target[index] = angle
         self.printer.lookup_object('toolhead').move(target, speed)
-
-
 def load_config(config):
     return ParolIK(config)
