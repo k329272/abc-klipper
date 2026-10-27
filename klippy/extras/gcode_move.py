@@ -55,6 +55,7 @@ class GCodeMove:
                                        self._handle_activate_extruder)
         printer.register_event_handler("homing:home_rails_end",
                                        self._handle_home_rails_end)
+        self._update_extra_axes()
     def _handle_ready(self):
         self.is_printer_ready = True
         if self.move_transform is None:
@@ -124,7 +125,7 @@ class GCodeMove:
                 continue
             gcode_id = ea.get_axis_gcode_id()
             if (gcode_id is None or len(gcode_id) != 1 or not gcode_id.isupper()
-                or gcode_id in axis_map or gcode_id in "FN"):
+                or gcode_id in "FN"):
                 continue
             axis_map[gcode_id] = index
         self.axis_map = axis_map

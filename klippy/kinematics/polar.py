@@ -5,6 +5,7 @@
 # This file may be distributed under the terms of the GNU GPLv3 license.
 import logging, math
 import stepper
+from . import linear_motor
 
 
 def distance_to_center(p1, p2):
@@ -56,6 +57,7 @@ class PolarKinematics:
         min_z, max_z = self.rails[1].get_range()
         self.axes_min = toolhead.Coord((-max_xy, -max_xy, min_z))
         self.axes_max = toolhead.Coord((max_xy, max_xy, max_z))
+        self.linear_motors = linear_motor.add_linear_motors(toolhead, config)
     def get_steppers(self):
         return list(self.steppers)
     def calc_position(self, stepper_positions):

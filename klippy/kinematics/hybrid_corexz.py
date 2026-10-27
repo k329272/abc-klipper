@@ -6,6 +6,7 @@
 import logging
 import stepper
 from . import idex_modes
+from . import linear_motor
 
 # The hybrid-corexz kinematic is also known as Markforged kinematics
 class HybridCoreXZKinematics:
@@ -46,6 +47,7 @@ class HybridCoreXZKinematics:
         self.max_z_accel = config.getfloat(
             'max_z_accel', max_accel, above=0., maxval=max_accel)
         self.limits = [(1.0, -1.0)] * 3
+        self.linear_motors = linear_motor.add_linear_motors(toolhead, config)
     def get_steppers(self):
         return [s for rail in self.rails for s in rail.get_steppers()]
     def calc_position(self, stepper_positions):

@@ -1,0 +1,4 @@
+DICTIONARY atmega2560.dict
+CONFIG ../../config/example-cartesian.cfg
+G1 A10 B20 C30 F3000
+G1 A0 B0 C0 F3000

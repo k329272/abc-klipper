@@ -5,6 +5,7 @@
 # This file may be distributed under the terms of the GNU GPLv3 license.
 import logging, math
 import stepper
+from . import linear_motor
 
 class CoreXYKinematics:
     def __init__(self, toolhead, config):
@@ -30,6 +31,7 @@ class CoreXYKinematics:
         ranges = [r.get_range() for r in self.rails]
         self.axes_min = toolhead.Coord([r[0] for r in ranges])
         self.axes_max = toolhead.Coord([r[1] for r in ranges])
+        self.linear_motors = linear_motor.add_linear_motors(toolhead, config)
     def get_steppers(self):
         return [s for rail in self.rails for s in rail.get_steppers()]
     def calc_position(self, stepper_positions):

@@ -8,6 +8,7 @@ import collections, copy, itertools, logging, math
 import gcode, mathutil, stepper
 from . import idex_modes
 from . import kinematic_stepper as ks
+from . import linear_motor
 
 VALID_AXES = ['x', 'y', 'z']
 
@@ -170,6 +171,7 @@ class GenericCartesianKinematics:
         gcode.register_command("SET_STEPPER_CARRIAGES",
                                self.cmd_SET_STEPPER_CARRIAGES,
                                desc=self.cmd_SET_STEPPER_CARRIAGES_help)
+        self.linear_motors = linear_motor.add_linear_motors(toolhead, config)
     def _load_kinematics(self, config):
         primary_carriages = []
         for mcconfig in config.get_prefix_sections('carriage '):

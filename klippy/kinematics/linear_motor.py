@@ -1,7 +1,5 @@
 # Code for simple linear motor support (A, B, C axes)
 #
-# Copyright (C) 2025  Kevin O'Connor <kevin@koconnor.net>
-#
 # This file may be distributed under the terms of the GNU GPLv3 license.
 
 import stepper
@@ -9,7 +7,7 @@ import stepper
 class LinearMotor:
     """A simple linear motor for non-kinematic axes (A, B, C)."""
 
-    def __init__(self, stepper, name):
+    def __init__(self, stepper, name, toolhead):
         self.stepper = stepper
         self.name = name
         self.printer = getattr(stepper, 'printer', None)
@@ -17,16 +15,13 @@ class LinearMotor:
             self.printer = stepper.get_printer()
         if self.printer is None:
             raise TypeError("LinearMotor requires a stepper-like object with a printer")
-        toolhead = self.printer.lookup_object('toolhead')
-        self.trapq = getattr(stepper, 'trapq', None)
-        if self.trapq is None:
-            self.trapq = toolhead.get_trapq()
-        self.trapq_append = getattr(stepper, 'trapq_append', None)
-        if self.trapq_append is None:
-            self.trapq_append = toolhead.motion_queuing.lookup_trapq_append()
+        self.motion_queuing = toolhead.motion_queuing
+        self.trapq = self.motion_queuing.allocate_trapq()
+        self.trapq_append = self.motion_queuing.lookup_trapq_append()
+        stepper.set_trapq(self.trapq)
         self.commanded_pos = 0.
         self.last_position = 0.
-        self.axis_gcode_id = None
+        self.axis_gcode_id = name.upper()
         self.instant_corner_v = 1.
         self.gaxis_limit_velocity = 999999.9
         self.gaxis_limit_accel = 999999.9
@@ -35,10 +30,10 @@ class LinearMotor:
         """Check move limits for this axis."""
         movepos = move.end_pos[ea_index]
 
-        # Check stepper limits if configured
-        if hasattr(self.stepper, 'limit_minimum') and hasattr(self.stepper, 'limit_maximum'):
-            if ((self.stepper.limit_minimum is not None and movepos < self.stepper.limit_minimum)
-                or (self.stepper.limit_maximum is not None and movepos > self.stepper.limit_maximum)):
+        # Check rail limits if configured
+        if hasattr(self.stepper, 'get_range'):
+            limit_minimum, limit_maximum = self.stepper.get_range()
+            if movepos < limit_minimum or movepos > limit_maximum:
                 raise move.move_error()
 
         # Check if need to limit maximum velocity and acceleration
@@ -66,6 +61,7 @@ class LinearMotor:
                           start_pos, 0., 0., 0., 0., 0.,
                           1., 0., 0., 0., 0., 0.,
                           start_v, cruise_v, accel)
+        self.commanded_pos = move.end_pos[ea_index]
         self.last_position = move.end_pos[ea_index]
 
     def find_past_position(self, print_time):
@@ -139,7 +135,7 @@ def add_linear_motors(toolhead, config, axis_names='abc'):
             continue
         rail = stepper.LookupMultiRail(config.getsection(section))
         rail.setup_itersolve('cartesian_stepper_alloc', axis.encode())
-        motor = LinearMotor(rail, axis.upper())
+        motor = LinearMotor(rail, axis.upper(), toolhead)
         toolhead.add_extra_axis(motor, motor.commanded_pos)
         motors.append(motor)
     return motors

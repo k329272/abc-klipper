@@ -5,6 +5,7 @@
 # This file may be distributed under the terms of the GNU GPLv3 license.
 import math, logging
 import stepper
+from . import linear_motor
 
 # Slow moves once the ratio of tower to XY movement exceeds SLOW_RATIO
 SLOW_RATIO = 3.
@@ -40,6 +41,7 @@ class DeltesianKinematics:
         self.rails[2].setup_itersolve('cartesian_stepper_alloc', b'y')
         for s in self.get_steppers():
             s.set_trapq(toolhead.get_trapq())
+        self.linear_motors = linear_motor.add_linear_motors(toolhead, config)
         self.limits = [(1.0, -1.0)] * 3
         # X axis limits
         min_angle = config.getfloat('min_angle', MIN_ANGLE,
