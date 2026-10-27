@@ -1,0 +1,113 @@
+name: Fully Automatic Klipper Sync & Copilot Fix
+
+on:
+  schedule:
+    - cron: '0 0 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: klipper-sync-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  auto-sync:
+    name: Sync upstream Klipper and auto-fix regressions
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      copilot-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+          ref: master
+
+      - name: Configure git identity
+        shell: bash
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Add upstream Klipper remote
+        shell: bash
+        run: |
+          git remote remove upstream 2>/dev/null || true
+          git remote add upstream https://github.com/Klipper3d/klipper.git
+
+      - name: Fetch and merge upstream changes
+        id: upstream_sync
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -e
+          git fetch upstream master
+          git checkout master
+          git merge --no-edit upstream/master || true
+          echo "status=$?" >> "$GITHUB_OUTPUT"
+          git status --short
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Run validation
+        id: validation
+        continue-on-error: true
+        shell: bash
+        run: |
+          python -m compileall . > compile-output.log 2>&1 || true
+          echo "status=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+
+      - name: Install GitHub Copilot CLI
+        if: steps.validation.outputs.status != '0'
+        shell: bash
+        run: |
+          npm install -g @github/copilot
+
+      - name: Fix code with GitHub Copilot
+        if: steps.validation.outputs.status != '0'
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Validation failed. Asking Copilot to repair the workspace."
+
+          export XDG_CONFIG_HOME="$RUNNER_TEMP/xdg-config"
+          mkdir -p "$XDG_CONFIG_HOME"
+
+          if [ -s compile-output.log ]; then
+            copilot -p "Review the compile failures in this repository and fix the issues directly in the workspace. Keep the project working and preserve the intended functionality." --yolo < compile-output.log
+          else
+            copilot -p "The repository has issues after the upstream sync. Diagnose and fix the breakage directly in the workspace." --yolo
+          fi
+
+      - name: Re-run validation
+        id: verification
+        shell: bash
+        run: |
+          python -m compileall . > compile-output-after.log 2>&1 || true
+          echo "status=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+
+      - name: Commit and push fixes
+        if: always()
+        shell: bash
+        run: |
+          set -e
+          git add -A
+
+          if git diff --cached --quiet; then
+            echo "No repository changes to commit."
+            exit 0
+          fi
+
+          git commit -m "fix(sync): merge upstream Klipper changes and resolve regressions"
+          git push origin HEAD:master
