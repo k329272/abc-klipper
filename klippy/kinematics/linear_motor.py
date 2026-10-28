@@ -43,8 +43,8 @@ class LinearMotor:
             limit_accel = self.gaxis_limit_accel * axis_ratio
             if not move.is_kinematic_move and hasattr(self.stepper, 'accel'):
                 if self.stepper.accel:
-                    limit_accel =
-                        min(limit_accel, self.stepper.accel * axis_ratio)
+                    limit_accel = min(
+                        limit_accel, self.stepper.accel * axis_ratio)
             move.limit_speed(limit_velocity, limit_accel)
 
     def process_move(self, print_time, move, ea_index):
