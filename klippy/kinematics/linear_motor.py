@@ -14,7 +14,7 @@ class LinearMotor:
         if self.printer is None and hasattr(stepper, 'get_printer'):
             self.printer = stepper.get_printer()
         if self.printer is None:
-            raise TypeError("LinearMotor requires a stepper-like object with a printer")
+            raise TypeError("LinearMotor requires a stepper-like object")
         self.motion_queuing = toolhead.motion_queuing
         self.trapq = self.motion_queuing.allocate_trapq()
         self.trapq_append = self.motion_queuing.lookup_trapq_append()
@@ -43,7 +43,8 @@ class LinearMotor:
             limit_accel = self.gaxis_limit_accel * axis_ratio
             if not move.is_kinematic_move and hasattr(self.stepper, 'accel'):
                 if self.stepper.accel:
-                    limit_accel = min(limit_accel, self.stepper.accel * axis_ratio)
+                    limit_accel =
+                        min(limit_accel, self.stepper.accel * axis_ratio)
             move.limit_speed(limit_velocity, limit_accel)
 
     def process_move(self, print_time, move, ea_index):
