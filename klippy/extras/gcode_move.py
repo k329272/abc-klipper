@@ -42,19 +42,19 @@ class GCodeMove:
         printer.register_event_handler("klippy:ready", self._handle_ready)
         printer.register_event_handler("klippy:shutdown", self._handle_shutdown)
         printer.register_event_handler("klippy:analyze_shutdown",
-                                       self._handle_analyze_shutdown)
+                                        self._handle_analyze_shutdown)
         printer.register_event_handler("toolhead:set_position",
-                                       self.reset_last_position)
+                                        self.reset_last_position)
         printer.register_event_handler("toolhead:manual_move",
-                                       self.reset_last_position)
+                                        self.reset_last_position)
         printer.register_event_handler("toolhead:update_extra_axes",
-                                       self._update_extra_axes)
+                                        self._update_extra_axes)
         printer.register_event_handler("gcode:command_error",
-                                       self.reset_last_position)
+                                        self.reset_last_position)
         printer.register_event_handler("extruder:activate_extruder",
-                                       self._handle_activate_extruder)
+                                        self._handle_activate_extruder)
         printer.register_event_handler("homing:home_rails_end",
-                                       self._handle_home_rails_end)
+                                        self._handle_home_rails_end)
         self._update_extra_axes()
     def _handle_ready(self):
         self.is_printer_ready = True
@@ -117,7 +117,9 @@ class GCodeMove:
         if self.is_printer_ready:
             self.last_position = self.position_with_transform()
     def _update_extra_axes(self):
-        toolhead = self.printer.lookup_object('toolhead')
+        toolhead = self.printer.lookup_object('toolhead', None)
+        if toolhead is None:
+            return
         axis_map = {'X':0, 'Y':1, 'Z':2, 'E':3, 'A':4, 'B':5, 'C':6}
         extra_axes = toolhead.get_extra_axes()
         for index, ea in enumerate(extra_axes):
@@ -283,10 +285,10 @@ class GCodeMove:
         gcode_pos = " ".join(["%s:%.6f"  % (a, v)
                               for a, v in zip("XYZEABC", self.last_position)])
         base_pos = " ".join(["%s:%.6f"  % (a, v)
-                             for a, v in zip("XYZEABC", self.base_position)])
+                              for a, v in zip("XYZEABC", self.base_position)])
         homing_pos = " ".join(["%s:%.6f"  % (a, v)
-                               for a, v in zip("XYZEABC",
-                                               self.homing_position)])
+                                for a, v in zip("XYZEABC",
+                                                self.homing_position)])
         gcmd.respond_info("mcu: %s\n"
                           "stepper: %s\n"
                           "kinematic: %s\n"
@@ -296,6 +298,7 @@ class GCodeMove:
                           "gcode homing: %s"
                           % (mcu_pos, stepper_pos, kin_pos, toolhead_pos,
                              gcode_pos, base_pos, homing_pos))
+
 
 def load_config(config):
     return GCodeMove(config)
