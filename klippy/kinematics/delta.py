@@ -13,7 +13,14 @@ class DeltaKinematics:
     def __init__(self, toolhead, config):
         # Setup tower rails
         stepper_configs = [config.getsection('stepper_' + a)
-                           for a in 'abcdef']
+                           for a in 'abc']
+        if any(config.has_section('stepper_' + a) for a in 'def'):
+            if not all(config.has_section('stepper_' + a) for a in 'def'):
+                raise config.get_printer().config_error(
+                    "Delta kinematics requires stepper_d, stepper_e, and "
+                    "stepper_f together")
+            stepper_configs += [config.getsection('stepper_' + a)
+                                for a in 'def']
         rail_a = stepper.LookupMultiRail(
             stepper_configs[0], need_position_minmax = False)
         a_endstop = rail_a.get_homing_info().position_endstop
@@ -23,16 +30,11 @@ class DeltaKinematics:
         rail_c = stepper.LookupMultiRail(
             stepper_configs[2], need_position_minmax = False,
             default_position_endstop=a_endstop)
-        rail_d = stepper.LookupMultiRail(
-            stepper_configs[3], need_position_minmax = False,
-            default_position_endstop=a_endstop)
-        rail_e = stepper.LookupMultiRail(
-            stepper_configs[4], need_position_minmax = False,
-            default_position_endstop=a_endstop)
-        rail_f = stepper.LookupMultiRail(
-            stepper_configs[5], need_position_minmax = False,
-            default_position_endstop=a_endstop)
-        self.rails = [rail_a, rail_b, rail_c, rail_d, rail_e, rail_f]
+        self.rails = [rail_a, rail_b, rail_c]
+        for sconfig in stepper_configs[3:]:
+            self.rails.append(stepper.LookupMultiRail(
+                sconfig, need_position_minmax=False,
+                default_position_endstop=a_endstop))
         # Setup max velocity
         self.max_velocity, self.max_accel = toolhead.get_max_velocity()
         self.max_z_velocity = config.getfloat(
@@ -54,7 +56,8 @@ class DeltaKinematics:
         # Determine tower locations in cartesian space
         self.angles = [sconfig.getfloat('angle', angle)
                        for sconfig, angle in zip(stepper_configs,
-                                                 [210., 330., 90.])]
+                                                 [210., 330., 90.,
+                                                  30., 150., 270.])]
         self.towers = [(math.cos(math.radians(angle)) * radius,
                         math.sin(math.radians(angle)) * radius)
                        for angle in self.angles]
@@ -193,14 +196,14 @@ class DeltaCalibration:
                              for e, a in zip(endstops, arms)]
     def coordinate_descent_params(self, is_extended):
         # Determine adjustment parameters (for use with coordinate_descent)
-        adj_params = ('radius', 'angle_a', 'angle_b',
-                      'endstop_a', 'endstop_b', 'endstop_c',
-                      'endstop_d', 'endstop_e', 'endstop_f')
+        axes = 'abcdef'[:len(self.angles)]
+        adj_params = (('radius', 'angle_a', 'angle_b')
+                      + tuple('angle_'+axis for axis in axes[3:])
+                      + tuple('endstop_'+axis for axis in axes))
         if is_extended:
-            adj_params += ('arm_a', 'arm_b', 'arm_c',
-                           'arm_d', 'arm_e', 'arm_f')
+            adj_params += tuple('arm_'+axis for axis in axes)
         params = { 'radius': self.radius }
-        for i, axis in enumerate('abcdef'):
+        for i, axis in enumerate(axes):
             params['angle_'+axis] = self.angles[i]
             params['arm_'+axis] = self.arms[i]
             params['endstop_'+axis] = self.endstops[i]
@@ -209,10 +212,11 @@ class DeltaCalibration:
     def new_calibration(self, params):
         # Create a new calibration object from coordinate_descent params
         radius = params['radius']
-        angles = [params['angle_'+a] for a in 'abcdef']
-        arms = [params['arm_'+a] for a in 'abcdef']
-        endstops = [params['endstop_'+a] for a in 'abcdef']
-        stepdists = [params['stepdist_'+a] for a in 'abcdef']
+        axes = 'abcdef'[:len(self.angles)]
+        angles = [params['angle_'+a] for a in axes]
+        arms = [params['arm_'+a] for a in axes]
+        endstops = [params['endstop_'+a] for a in axes]
+        stepdists = [params['stepdist_'+a] for a in axes]
         return DeltaCalibration(radius, angles, arms, endstops, stepdists)
     def get_position_from_stable(self, stable_position):
         # Return cartesian coordinates for the given stable_position
@@ -232,25 +236,20 @@ class DeltaCalibration:
     def save_state(self, configfile):
         # Save the current parameters (for use with SAVE_CONFIG)
         configfile.set('printer', 'delta_radius', "%.6f" % (self.radius,))
-        for i, axis in enumerate('abcdef'):
+        axes = 'abcdef'[:len(self.angles)]
+        for i, axis in enumerate(axes):
             configfile.set('stepper_'+axis, 'angle', "%.6f" % (self.angles[i],))
             configfile.set('stepper_'+axis, 'arm_length',
                            "%.6f" % (self.arms[i],))
             configfile.set('stepper_'+axis, 'position_endstop',
                            "%.6f" % (self.endstops[i],))
         gcode = configfile.get_printer().lookup_object("gcode")
-        gcode.respond_info(
-            "stepper_a: position_endstop: %.6f angle: %.6f arm_length: %.6f\n"
-            "stepper_b: position_endstop: %.6f angle: %.6f arm_length: %.6f\n"
-            "stepper_c: position_endstop: %.6f angle: %.6f arm_length: %.6f\n"
-            "stepper_d: position_endstop: %.6f angle: %.6f arm_length: %.6f\n"
-            "stepper_e: position_endstop: %.6f angle: %.6f arm_length: %.6f\n"
-            "stepper_f: position_endstop: %.6f angle: %.6f arm_length: %.6f\n"
-            "delta_radius: %.6f"
-            % (self.endstops[0], self.angles[0], self.arms[0],
-               self.endstops[1], self.angles[1], self.arms[1],
-               self.endstops[2], self.angles[2], self.arms[2],
-               self.radius))
+        lines = [
+            ("stepper_%s: position_endstop: %.6f angle: %.6f arm_length: %.6f"
+             % (axis, self.endstops[i], self.angles[i], self.arms[i]))
+            for i, axis in enumerate(axes)]
+        lines.append("delta_radius: %.6f" % (self.radius,))
+        gcode.respond_info("\n".join(lines))
 
 def load_kinematics(toolhead, config):
     return DeltaKinematics(toolhead, config)

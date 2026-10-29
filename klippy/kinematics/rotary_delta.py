@@ -10,7 +10,14 @@ class RotaryDeltaKinematics:
     def __init__(self, toolhead, config):
         # Setup tower rails
         stepper_configs = [config.getsection('stepper_' + a)
-                           for a in 'abcdef']
+                           for a in 'abc']
+        if any(config.has_section('stepper_' + a) for a in 'def'):
+            if not all(config.has_section('stepper_' + a) for a in 'def'):
+                raise config.get_printer().config_error(
+                    "Rotary delta kinematics requires stepper_d, stepper_e, "
+                    "and stepper_f together")
+            stepper_configs += [config.getsection('stepper_' + a)
+                                for a in 'def']
         rail_a = stepper.LookupRail(
             stepper_configs[0], need_position_minmax=False,
             units_in_radians=True)
@@ -21,17 +28,11 @@ class RotaryDeltaKinematics:
         rail_c = stepper.LookupRail(
             stepper_configs[2], need_position_minmax=False,
             default_position_endstop=a_endstop, units_in_radians=True)
-        rail_d = stepper.LookupRail(
-            stepper_configs[3], need_position_minmax=False,
-            default_position_endstop=a_endstop, units_in_radians=True)
-        rail_e = stepper.LookupRail(
-            stepper_configs[4], need_position_minmax=False,
-            default_position_endstop=a_endstop, units_in_radians=True)
-        rail_f = stepper.LookupRail(
-            stepper_configs[5], need_position_minmax=False,
-            default_position_endstop=a_endstop, units_in_radians=True)
-        self.rails = [rail_a, rail_b, rail_c,
-                      rail_d, rail_e, rail_f]
+        self.rails = [rail_a, rail_b, rail_c]
+        for sconfig in stepper_configs[3:]:
+            self.rails.append(stepper.LookupRail(
+                sconfig, need_position_minmax=False,
+                default_position_endstop=a_endstop, units_in_radians=True))
         # Read config
         max_velocity, max_accel = toolhead.get_max_velocity()
         self.max_z_velocity = config.getfloat('max_z_velocity', max_velocity,
@@ -47,7 +48,8 @@ class RotaryDeltaKinematics:
             sconfig.getfloat('lower_arm_length', a_lower_arm, above=0.)
             for sconfig in stepper_configs]
         angles = [sconfig.getfloat('angle', angle)
-                  for sconfig, angle in zip(stepper_configs, [30., 150., 270.])]
+                  for sconfig, angle in zip(
+                      stepper_configs, [30., 150., 270., 90., 210., 330.])]
         # Setup rotary delta calibration helper
         endstops = [rail.get_homing_info().position_endstop
                     for rail in self.rails]
@@ -162,14 +164,15 @@ class RotaryDeltaCalibration:
             for sk, es in zip(self.sks, endstops)]
     def coordinate_descent_params(self, is_extended):
         # Determine adjustment parameters (for use with coordinate_descent)
-        adj_params = ('shoulder_height',
-                      'endstop_a', 'endstop_b', 'endstop_c',
-                      'endstop_d', 'endstop_e', 'endstop_f',)
+        axes = 'abcdef'[:len(self.angles)]
+        adj_params = (('shoulder_height',)
+                      + tuple('endstop_'+axis for axis in axes))
         if is_extended:
-            adj_params += ('shoulder_radius', 'angle_a', 'angle_b')
+            adj_params += (('shoulder_radius', 'angle_a', 'angle_b')
+                           + tuple('angle_'+axis for axis in axes[3:]))
         params = { 'shoulder_radius': self.shoulder_radius,
                    'shoulder_height': self.shoulder_height }
-        for i, axis in enumerate('abcdef'):
+        for i, axis in enumerate(axes):
             params['angle_'+axis] = self.angles[i]
             params['upper_arm_'+axis] = self.upper_arms[i]
             params['lower_arm_'+axis] = self.lower_arms[i]
@@ -180,11 +183,12 @@ class RotaryDeltaCalibration:
         # Create a new calibration object from coordinate_descent params
         shoulder_radius = params['shoulder_radius']
         shoulder_height = params['shoulder_height']
-        angles = [params['angle_'+a] for a in 'abcdef']
-        upper_arms = [params['upper_arm_'+a] for a in 'abcdef']
-        lower_arms = [params['lower_arm_'+a] for a in 'abcdef']
-        endstops = [params['endstop_'+a] for a in 'abcdef']
-        stepdists = [params['stepdist_'+a] for a in 'abcdef']
+        axes = 'abcdef'[:len(self.angles)]
+        angles = [params['angle_'+a] for a in axes]
+        upper_arms = [params['upper_arm_'+a] for a in axes]
+        lower_arms = [params['lower_arm_'+a] for a in axes]
+        endstops = [params['endstop_'+a] for a in axes]
+        stepdists = [params['stepdist_'+a] for a in axes]
         return RotaryDeltaCalibration(
             shoulder_radius, shoulder_height, angles, upper_arms, lower_arms,
             endstops, stepdists)
@@ -221,23 +225,19 @@ class RotaryDeltaCalibration:
                        % (self.shoulder_radius,))
         configfile.set('printer', 'shoulder_height', "%.6f"
                        % (self.shoulder_height,))
-        for i, axis in enumerate('abcdef'):
+        axes = 'abcdef'[:len(self.angles)]
+        for i, axis in enumerate(axes):
             configfile.set('stepper_'+axis, 'angle', "%.6f" % (self.angles[i],))
             configfile.set('stepper_'+axis, 'position_endstop',
                            "%.6f" % (self.endstops[i],))
         gcode = configfile.get_printer().lookup_object("gcode")
-        gcode.respond_info(
-            "stepper_a: position_endstop: %.6f angle: %.6f\n"
-            "stepper_b: position_endstop: %.6f angle: %.6f\n"
-            "stepper_c: position_endstop: %.6f angle: %.6f\n"
-            "stepper_d: position_endstop: %.6f angle: %.6f\n"
-            "stepper_e: position_endstop: %.6f angle: %.6f\n"
-            "stepper_f: position_endstop: %.6f angle: %.6f\n"
-            "shoulder_radius: %.6f shoulder_height: %.6f"
-            % (self.endstops[0], self.angles[0],
-               self.endstops[1], self.angles[1],
-               self.endstops[2], self.angles[2],
-               self.shoulder_radius, self.shoulder_height))
+        lines = [
+            "stepper_%s: position_endstop: %.6f angle: %.6f"
+            % (axis, self.endstops[i], self.angles[i])
+            for i, axis in enumerate(axes)]
+        lines.append("shoulder_radius: %.6f shoulder_height: %.6f"
+                     % (self.shoulder_radius, self.shoulder_height))
+        gcode.respond_info("\n".join(lines))
 
 def load_kinematics(toolhead, config):
     return RotaryDeltaKinematics(toolhead, config)
