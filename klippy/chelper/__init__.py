@@ -19,8 +19,8 @@ SSE_FLAGS = "-mfpmath=sse -msse2"
 SOURCE_FILES = [
     'pyhelper.c', 'serialqueue.c', 'stepcompress.c', 'steppersync.c',
     'itersolve.c', 'trapq.c', 'pollreactor.c', 'msgblock.c', 'trdispatch.c',
-    'kin_cartesian.c', 'kin_shaper.c', 'kin_parol.c', 'kin_generic.c',
-    'kin_idex.c', 'extruder.c'
+    'kin_cartesian.c', 'kin_delta.c', 'kin_shaper.c', 'kin_parol.c',
+    'kin_generic.c', 'kin_idex.c', 'extruder.c'
 ]
 DEST_LIB = "c_helper.so"
 OTHER_FILES = [
@@ -116,6 +116,11 @@ defs_trapq = """
 
 defs_kin_cartesian = """
     struct stepper_kinematics *cartesian_stepper_alloc(char axis);
+"""
+
+defs_kin_delta = """
+    struct stepper_kinematics *delta_stepper_alloc(double arm2
+        , double tower_x, double tower_y);
 """
 
 defs_kin_generic_cartesian = """
@@ -215,7 +220,8 @@ defs_std = """
 defs_all = [
     defs_pyhelper, defs_serialqueue, defs_std, defs_stepcompress,
     defs_steppersync, defs_itersolve, defs_trapq, defs_trdispatch,
-    defs_kin_cartesian, defs_kin_generic_cartesian, defs_kin_idex,
+    defs_kin_cartesian, defs_kin_delta, defs_kin_generic_cartesian,
+    defs_kin_idex,
     defs_kin_parol,
     defs_kin_shaper, defs_extruder,
 ]
