@@ -91,6 +91,40 @@ def background_coordinate_descent(printer, adj_params, params, error_func):
 # Trilateration finds the intersection of three spheres.  See the
 # wikipedia article for the details of the algorithm.
 def trilateration(sphere_coords, radius2):
+    if len(sphere_coords) > 3:
+        # Start with the exact three-sphere solution, then fit the remaining
+        # spheres too. This also handles coplanar sphere centers.
+        pos = trilateration(sphere_coords[:3], radius2[:3])
+        for _ in range(20):
+            normal = [[0.] * 4 for _ in range(3)]
+            for sphere_coord, r2 in zip(sphere_coords, radius2):
+                delta = [pos[i] - sphere_coord[i] for i in range(3)]
+                residual = matrix_magsq(delta) - r2
+                row = [2. * d for d in delta]
+                for i in range(3):
+                    normal[i][3] -= row[i] * residual
+                    for j in range(3):
+                        normal[i][j] += row[i] * row[j]
+            for col in range(3):
+                pivot = max(range(col, 3),
+                            key=lambda row: abs(normal[row][col]))
+                if abs(normal[pivot][col]) < 1.e-12:
+                    raise ValueError("Degenerate sphere coordinates")
+                normal[col], normal[pivot] = normal[pivot], normal[col]
+                scale = normal[col][col]
+                normal[col] = [value / scale for value in normal[col]]
+                for row in range(3):
+                    if row == col:
+                        continue
+                    scale = normal[row][col]
+                    normal[row] = [
+                        value - scale * pivot_value
+                        for value, pivot_value in zip(normal[row], normal[col])]
+            delta = [normal[i][3] for i in range(3)]
+            pos = [p + d for p, d in zip(pos, delta)]
+            if max(abs(d) for d in delta) < 1.e-8:
+                break
+        return pos
     sphere_coord1, sphere_coord2, sphere_coord3 = sphere_coords
     s21 = matrix_sub(sphere_coord2, sphere_coord1)
     s31 = matrix_sub(sphere_coord3, sphere_coord1)

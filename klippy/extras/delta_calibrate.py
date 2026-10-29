@@ -7,14 +7,13 @@ import math, logging, collections
 import mathutil
 from . import probe
 
-# A "stable position" is a 3-tuple containing the number of steps
-# taken since hitting the endstop on each delta tower.  Delta
-# calibration uses this coordinate system because it allows a position
-# to be described independent of the software parameters.
+# A stable position contains the number of steps taken since hitting the
+# endstop on each delta tower. Delta calibration uses this coordinate system
+# because it describes a position independent of the software parameters.
 
 # Load a stable position from a config entry
 def load_config_stable(config, option):
-    return config.getfloatlist(option, count=3)
+    return config.getfloatlist(option)
 
 
 ######################################################################
@@ -31,7 +30,7 @@ MeasureRidgeRadius = 5. - .5
 MEASURE_WEIGHT = 0.5
 
 # Convert distance measurements made on the calibration object to
-# 3-tuples of (actual_distance, stable_position1, stable_position2)
+# (actual_distance, stable_position1, stable_position2) tuples.
 def measurements_to_distances(measured_params, delta_params):
     # Extract params
     mp = measured_params
@@ -139,19 +138,19 @@ class DeltaCalibrate:
         for i, (z_offset, spos) in enumerate(probe_positions):
             configfile.set(section, "height%d" % (i,), z_offset)
             configfile.set(section, "height%d_pos" % (i,),
-                           "%.3f,%.3f,%.3f" % tuple(spos))
+                           ",".join("%.3f" % p for p in spos))
         # Save manually entered heights
         for i, (z_offset, spos) in enumerate(self.manual_heights):
             configfile.set(section, "manual_height%d" % (i,), z_offset)
             configfile.set(section, "manual_height%d_pos" % (i,),
-                           "%.3f,%.3f,%.3f" % tuple(spos))
+                           ",".join("%.3f" % p for p in spos))
         # Save distance measurements
         for i, (dist, spos1, spos2) in enumerate(distances):
             configfile.set(section, "distance%d" % (i,), dist)
             configfile.set(section, "distance%d_pos1" % (i,),
-                           "%.3f,%.3f,%.3f" % tuple(spos1))
+                           ",".join("%.3f" % p for p in spos1))
             configfile.set(section, "distance%d_pos2" % (i,),
-                           "%.3f,%.3f,%.3f" % tuple(spos2))
+                           ",".join("%.3f" % p for p in spos2))
     def probe_finalize(self, positions):
         # Convert positions into (z_offset, stable_position) pairs
         kin = self.printer.lookup_object('toolhead').get_kinematics()
