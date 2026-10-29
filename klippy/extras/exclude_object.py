@@ -18,8 +18,8 @@ class ExcludeObject:
         self.printer.register_event_handler("virtual_sdcard:reset_file",
                                             self._reset_file)
         self.next_transform = None
-        self.last_position_extruded = [0., 0., 0., 0.]
-        self.last_position_excluded = [0., 0., 0., 0.]
+        self.last_position_extruded = []
+        self.last_position_excluded = []
 
         self._reset_state()
         self.gcode.register_command(
@@ -50,11 +50,9 @@ class ExcludeObject:
             self.max_position_excluded = 0
             self.extruder_adj = 0
             self.initial_extrusion_moves = 5
-            self.last_position = [0., 0., 0., 0.]
-
-            self.get_position()
-            self.last_position_extruded[:] = self.last_position
-            self.last_position_excluded[:] = self.last_position
+            self.last_position = self.get_position()
+            self.last_position_extruded = self.last_position[:]
+            self.last_position_excluded = self.last_position[:]
 
     def _handle_connect(self):
         self.toolhead = self.printer.lookup_object('toolhead')
@@ -95,8 +93,7 @@ class ExcludeObject:
     def get_position(self):
         pos = self.next_transform.get_position()
         offset = self._get_extrusion_offsets(len(pos))
-        for i in range(len(pos)):
-            self.last_position[i] = pos[i] + offset[i]
+        self.last_position[:] = [p + o for p, o in zip(pos, offset)]
         return list(self.last_position)
 
     def _normal_move(self, newpos, speed):
@@ -131,6 +128,11 @@ class ExcludeObject:
 
         if offset[2] != 0 and newpos[2] != self.last_position_excluded[2]:
             offset[2] = 0
+
+        for i in range(4, len(newpos)):
+            if offset[i] != 0 and \
+                newpos[i] != self.last_position_excluded[i]:
+                offset[i] = 0
 
         if self.extruder_adj != 0 and \
             newpos[3] != self.last_position_excluded[3]:
