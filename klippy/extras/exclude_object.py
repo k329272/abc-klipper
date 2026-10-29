@@ -18,6 +18,7 @@ class ExcludeObject:
         self.printer.register_event_handler("virtual_sdcard:reset_file",
                                             self._reset_file)
         self.next_transform = None
+        self.last_position = []
         self.last_position_extruded = []
         self.last_position_excluded = []
 
