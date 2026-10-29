@@ -9,7 +9,8 @@ import stepper, mathutil, chelper
 class RotaryDeltaKinematics:
     def __init__(self, toolhead, config):
         # Setup tower rails
-        stepper_configs = [config.getsection('stepper_' + a) for a in 'abc']
+        stepper_configs = [config.getsection('stepper_' + a)
+                           for a in 'abcdef']
         rail_a = stepper.LookupRail(
             stepper_configs[0], need_position_minmax=False,
             units_in_radians=True)
@@ -20,7 +21,17 @@ class RotaryDeltaKinematics:
         rail_c = stepper.LookupRail(
             stepper_configs[2], need_position_minmax=False,
             default_position_endstop=a_endstop, units_in_radians=True)
-        self.rails = [rail_a, rail_b, rail_c]
+        rail_d = stepper.LookupRail(
+            stepper_configs[3], need_position_minmax=False,
+            default_position_endstop=a_endstop, units_in_radians=True)
+        rail_e = stepper.LookupRail(
+            stepper_configs[4], need_position_minmax=False,
+            default_position_endstop=a_endstop, units_in_radians=True)
+        rail_f = stepper.LookupRail(
+            stepper_configs[5], need_position_minmax=False,
+            default_position_endstop=a_endstop, units_in_radians=True)
+        self.rails = [rail_a, rail_b, rail_c,
+                      rail_d, rail_e, rail_f]
         # Read config
         max_velocity, max_accel = toolhead.get_max_velocity()
         self.max_z_velocity = config.getfloat('max_z_velocity', max_velocity,
@@ -151,12 +162,14 @@ class RotaryDeltaCalibration:
             for sk, es in zip(self.sks, endstops)]
     def coordinate_descent_params(self, is_extended):
         # Determine adjustment parameters (for use with coordinate_descent)
-        adj_params = ('shoulder_height', 'endstop_a', 'endstop_b', 'endstop_c')
+        adj_params = ('shoulder_height',
+                      'endstop_a', 'endstop_b', 'endstop_c',
+                      'endstop_d', 'endstop_e', 'endstop_f',)
         if is_extended:
             adj_params += ('shoulder_radius', 'angle_a', 'angle_b')
         params = { 'shoulder_radius': self.shoulder_radius,
                    'shoulder_height': self.shoulder_height }
-        for i, axis in enumerate('abc'):
+        for i, axis in enumerate('abcdef'):
             params['angle_'+axis] = self.angles[i]
             params['upper_arm_'+axis] = self.upper_arms[i]
             params['lower_arm_'+axis] = self.lower_arms[i]
@@ -167,11 +180,11 @@ class RotaryDeltaCalibration:
         # Create a new calibration object from coordinate_descent params
         shoulder_radius = params['shoulder_radius']
         shoulder_height = params['shoulder_height']
-        angles = [params['angle_'+a] for a in 'abc']
-        upper_arms = [params['upper_arm_'+a] for a in 'abc']
-        lower_arms = [params['lower_arm_'+a] for a in 'abc']
-        endstops = [params['endstop_'+a] for a in 'abc']
-        stepdists = [params['stepdist_'+a] for a in 'abc']
+        angles = [params['angle_'+a] for a in 'abcdef']
+        upper_arms = [params['upper_arm_'+a] for a in 'abcdef']
+        lower_arms = [params['lower_arm_'+a] for a in 'abcdef']
+        endstops = [params['endstop_'+a] for a in 'abcdef']
+        stepdists = [params['stepdist_'+a] for a in 'abcdef']
         return RotaryDeltaCalibration(
             shoulder_radius, shoulder_height, angles, upper_arms, lower_arms,
             endstops, stepdists)
@@ -208,7 +221,7 @@ class RotaryDeltaCalibration:
                        % (self.shoulder_radius,))
         configfile.set('printer', 'shoulder_height', "%.6f"
                        % (self.shoulder_height,))
-        for i, axis in enumerate('abc'):
+        for i, axis in enumerate('abcdef'):
             configfile.set('stepper_'+axis, 'angle', "%.6f" % (self.angles[i],))
             configfile.set('stepper_'+axis, 'position_endstop',
                            "%.6f" % (self.endstops[i],))
@@ -217,6 +230,9 @@ class RotaryDeltaCalibration:
             "stepper_a: position_endstop: %.6f angle: %.6f\n"
             "stepper_b: position_endstop: %.6f angle: %.6f\n"
             "stepper_c: position_endstop: %.6f angle: %.6f\n"
+            "stepper_d: position_endstop: %.6f angle: %.6f\n"
+            "stepper_e: position_endstop: %.6f angle: %.6f\n"
+            "stepper_f: position_endstop: %.6f angle: %.6f\n"
             "shoulder_radius: %.6f shoulder_height: %.6f"
             % (self.endstops[0], self.angles[0],
                self.endstops[1], self.angles[1],
