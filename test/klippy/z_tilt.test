@@ -1,4 +1,4 @@
-# Test case for z_tilt and quad_gantry_level
+# Test case for z_tilt
 CONFIG z_tilt.cfg
 DICTIONARY atmega2560.dict
 
