@@ -19,7 +19,7 @@ SSE_FLAGS = "-mfpmath=sse -msse2"
 SOURCE_FILES = [
     'pyhelper.c', 'serialqueue.c', 'stepcompress.c', 'steppersync.c',
     'itersolve.c', 'trapq.c', 'pollreactor.c', 'msgblock.c', 'trdispatch.c',
-    'kin_cartesian.c', 'kin_delta.c', 'kin_shaper.c', 'kin_parol.c',
+    'kin_cartesian.c', 'kin_corexy.c', 'kin_delta.c', 'kin_shaper.c', 'kin_parol.c',
     'kin_generic.c', 'kin_idex.c', 'extruder.c'
 ]
 DEST_LIB = "c_helper.so"
@@ -27,6 +27,7 @@ OTHER_FILES = [
     'list.h', 'serialqueue.h', 'stepcompress.h', 'steppersync.h',
     'itersolve.h', 'pyhelper.h', 'trapq.h', 'pollreactor.h', 'msgblock.h'
 ]
+
 
 defs_stepcompress = """
     struct pull_history_steps {
@@ -50,6 +51,7 @@ defs_stepcompress = """
         , uint64_t start_clock, uint64_t end_clock);
 """
 
+
 defs_steppersync = """
     struct stepcompress *syncemitter_get_stepcompress(struct syncemitter *se);
     void syncemitter_set_stepper_kinematics(struct syncemitter *se
@@ -72,6 +74,7 @@ defs_steppersync = """
         , double flush_time, double gen_steps_time, double clear_history_time);
 """
 
+
 defs_itersolve = """
     double itersolve_check_active(struct stepper_kinematics *sk
         , double flush_time);
@@ -87,6 +90,7 @@ defs_itersolve = """
     double itersolve_get_gen_steps_pre_active(struct stepper_kinematics *sk);
     double itersolve_get_gen_steps_post_active(struct stepper_kinematics *sk);
 """
+
 
 defs_trapq = """
     struct pull_move {
@@ -114,14 +118,22 @@ defs_trapq = """
         , double start_time, double end_time);
 """
 
+
 defs_kin_cartesian = """
     struct stepper_kinematics *cartesian_stepper_alloc(char axis);
 """
+
+
+defs_kin_corexy = """
+    struct stepper_kinematics *corexy_stepper_alloc(char type);
+"""
+
 
 defs_kin_delta = """
     struct stepper_kinematics *delta_stepper_alloc(double arm2
         , double tower_x, double tower_y);
 """
+
 
 defs_kin_generic_cartesian = """
     struct stepper_kinematics *generic_cartesian_stepper_alloc(
@@ -130,6 +142,7 @@ defs_kin_generic_cartesian = """
         , double x_coeff, double y_coeff, double z_coeff);
 """
 
+
 defs_kin_idex = """
     void dual_carriage_set_sk(struct stepper_kinematics *sk
         , struct stepper_kinematics *orig_sk);
@@ -137,6 +150,7 @@ defs_kin_idex = """
         , char axis, double scale, double offs);
     struct stepper_kinematics *dual_carriage_alloc(void);
 """
+
 
 defs_kin_parol = """
     struct parol_ik *parol_ik_alloc(void);
@@ -147,6 +161,7 @@ defs_kin_parol = """
         int max_iterations, double tolerance, double result[6]);
 """
 
+
 defs_kin_shaper = """
     int input_shaper_set_shaper_params(struct stepper_kinematics *sk, char axis
         , int n, double a[], double t[]);
@@ -156,12 +171,14 @@ defs_kin_shaper = """
     struct stepper_kinematics * input_shaper_alloc(void);
 """
 
+
 defs_extruder = """
     struct stepper_kinematics *extruder_stepper_alloc(void);
     void extruder_stepper_free(struct stepper_kinematics *sk);
     void extruder_set_pressure_advance(struct stepper_kinematics *sk
         , double print_time, double pressure_advance, double smooth_time);
 """
+
 
 defs_serialqueue = """
     #define MESSAGE_MAX 64
@@ -194,6 +211,7 @@ defs_serialqueue = """
         , struct pull_queue_message *q, int max);
 """
 
+
 defs_trdispatch = """
     void trdispatch_start(struct trdispatch *td, uint32_t dispatch_reason);
     void trdispatch_stop(struct trdispatch *td);
@@ -207,20 +225,23 @@ defs_trdispatch = """
         , uint64_t expire_ticks, uint64_t min_extend_ticks);
 """
 
+
 defs_pyhelper = """
     void set_python_logging_callback(void (*func)(const char *));
     double get_monotonic(void);
     int set_thread_name(char name[16]);
 """
 
+
 defs_std = """
     void free(void*);
 """
 
+
 defs_all = [
     defs_pyhelper, defs_serialqueue, defs_std, defs_stepcompress,
     defs_steppersync, defs_itersolve, defs_trapq, defs_trdispatch,
-    defs_kin_cartesian, defs_kin_delta, defs_kin_generic_cartesian,
+    defs_kin_cartesian, defs_kin_corexy, defs_kin_delta, defs_kin_generic_cartesian,
     defs_kin_idex,
     defs_kin_parol,
     defs_kin_shaper, defs_extruder,
@@ -254,7 +275,7 @@ def check_gcc_option(option):
     res = os.system(cmd)
     return res == 0
 
-# Check if the current gcc version supports a particular command-line option
+# Check if the code needs to be compiled
 def do_build_code(cmd):
     res = os.system(cmd)
     if res:
