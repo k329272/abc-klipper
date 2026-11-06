@@ -380,6 +380,5 @@ def run_hub_ctrl(enable_power):
         do_build_code(HC_COMPILE_CMD % (destlib, ' '.join(srcfiles)))
     os.system(HC_CMD % (hubdir, enable_power))
 
-
 if __name__ == '__main__':
     get_ffi()
