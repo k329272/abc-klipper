@@ -19,8 +19,8 @@ SSE_FLAGS = "-mfpmath=sse -msse2"
 SOURCE_FILES = [
     'pyhelper.c', 'serialqueue.c', 'stepcompress.c', 'steppersync.c',
     'itersolve.c', 'trapq.c', 'pollreactor.c', 'msgblock.c', 'trdispatch.c',
-    'kin_cartesian.c', 'kin_corexy.c', 'kin_delta.c', 'kin_shaper.c',
-    'kin_parol.c', 'kin_generic.c', 'kin_idex.c', 'extruder.c'
+    'kin_cartesian.c', 'kin_corexy.c', 'kin_delta.c', 'kin_polar.c',
+    'kin_shaper.c', 'kin_parol.c', 'kin_generic.c', 'kin_idex.c', 'extruder.c'
 ]
 DEST_LIB = "c_helper.so"
 OTHER_FILES = [
@@ -135,6 +135,11 @@ defs_kin_delta = """
 """
 
 
+defs_kin_polar = """
+    struct stepper_kinematics *polar_stepper_alloc(char type);
+"""
+
+
 defs_kin_generic_cartesian = """
     struct stepper_kinematics *generic_cartesian_stepper_alloc(
         double x_coeff, double y_coeff, double z_coeff);
@@ -241,7 +246,7 @@ defs_std = """
 defs_all = [
     defs_pyhelper, defs_serialqueue, defs_std, defs_stepcompress,
     defs_steppersync, defs_itersolve, defs_trapq, defs_trdispatch,
-    defs_kin_cartesian, defs_kin_corexy, defs_kin_delta,
+    defs_kin_cartesian, defs_kin_corexy, defs_kin_delta, defs_kin_polar,
     defs_kin_generic_cartesian, defs_kin_idex, defs_kin_parol,
     defs_kin_shaper, defs_extruder,
 ]
@@ -267,22 +272,14 @@ def check_build_code(sources, target):
     obj_times = get_mtimes([target])
     return not obj_times or max(src_times) > min(obj_times)
 
-# Check if the current gcc version supports a particular command-line option
+# Check if the current GCC version supports a particular command-line option
 def check_gcc_option(option):
     cmd = "%s %s -S -o /dev/null -xc /dev/null > /dev/null 2>&1" % (
         GCC_CMD, option)
     res = os.system(cmd)
     return res == 0
 
-# Check if the code needs to be compiled
-def do_build_code(cmd):
-    res = os.system(cmd)
-    if res:
-        msg = "Unable to build C code module (error=%s)" % (res,)
-        logging.error(msg)
-        raise Exception(msg)
-
-# Build the main c_helper.so c code library
+# Build the main c_helper.so C code library
 def check_build_c_library():
     srcdir = os.path.dirname(os.path.realpath(__file__))
     srcfiles = get_abs_files(srcdir, SOURCE_FILES)
@@ -303,6 +300,14 @@ def check_build_c_library():
     # Rename from temporary file to final file name
     os.rename(tempdestlib, destlib)
     return destlib
+
+# Check whether compiler command succeeds
+def do_build_code(cmd):
+    res = os.system(cmd)
+    if res:
+        msg = "Unable to build C code module (error=%s)" % (res,)
+        logging.error(msg)
+        raise Exception(msg)
 
 FFI_main = None
 FFI_lib = None
