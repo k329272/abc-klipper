@@ -67,7 +67,8 @@ class ManualStepper:
             dist, speed, accel)
         self.trapq_append(self.trapq, movetime,
                           accel_t, cruise_t, accel_t,
-                          cp, 0., 0., axis_r, 0., 0.,
+                          cp, 0., 0., 0., 0., 0.,
+                          axis_r, 0., 0., 0., 0., 0.,
                           0., cruise_v, accel)
         self.commanded_pos = movepos
         return movetime + accel_t + cruise_t + accel_t
@@ -178,7 +179,7 @@ class ManualStepper:
                           start_v, cruise_v, accel)
         self.commanded_pos = move.end_pos[ea_index]
     def check_move(self, move, ea_index):
-        # Check move is in bounds
+        # Check move limits
         movepos = move.end_pos[ea_index]
         if ((self.pos_min is not None and movepos < self.pos_min)
             or (self.pos_max is not None and movepos > self.pos_max)):
