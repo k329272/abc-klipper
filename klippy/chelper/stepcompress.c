@@ -427,22 +427,6 @@ set_next_step_dir(struct stepcompress *sc, int sdir)
     return 0;
 }
 
-// Slow path for queue_append() - handle next step far in future
-static int
-queue_append_far(struct stepcompress *sc)
-{
-    uint64_t step_clock = sc->next_step_clock;
-    sc->next_step_clock = 0;
-    int ret = queue_flush(sc, step_clock - CLOCK_DIFF_MAX + 1);
-    if (ret)
-        return ret;
-    if (step_clock >= sc->last_step_clock + CLOCK_DIFF_MAX)
-        return stepcompress_flush_far(sc, step_clock);
-    sc->queue_next->clock32 = step_clock;
-    sc->queue_next++;
-    return 0;
-}
-
 // Slow path for queue_append() - expand the internal queue storage
 static int
 queue_append_extend(struct stepcompress *sc)
@@ -480,6 +464,21 @@ queue_append_extend(struct stepcompress *sc)
     sc->queue_next++;
     sc->next_step_clock = 0;
     return 0;
+}
+
+// Slow path for queue_append() - handle next step far in future
+static int
+queue_append_far(struct stepcompress *sc)
+{
+    uint64_t step_clock = sc->next_step_clock;
+    int ret = queue_flush(sc, step_clock - CLOCK_DIFF_MAX + 1);
+    if (ret)
+        return ret;
+    if (step_clock >= sc->last_step_clock + CLOCK_DIFF_MAX) {
+        sc->next_step_clock = 0;
+        return stepcompress_flush_far(sc, step_clock);
+    }
+    return queue_append_extend(sc);
 }
 
 // Add a step time to the queue (flushing the queue if needed)
@@ -604,7 +603,7 @@ stepcompress_find_past_position(struct stepcompress *sc, uint64_t clock)
         if (!add) {
             offset = ticks / interval;
         } else {
-            // Solve for "count" using quadratic formula
+            // Solve for 'count' using quadratic formula
             double a = .5 * add, b = interval - .5 * add, c = -ticks;
             offset = (sqrt(b*b - 4*a*c) - b) / (2. * a);
         }
